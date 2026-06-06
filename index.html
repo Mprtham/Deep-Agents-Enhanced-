@@ -106,45 +106,60 @@ body::before{
 
 .tb-gap{flex:1}
 
-/* Model selector — clear pill group */
+/* Model selector — labelled card with clear affordance */
 .model-group{
-  display:flex;align-items:center;
+  display:flex;flex-direction:column;align-items:flex-start;
   background:var(--surface);
   border:1px solid var(--border);
-  border-radius:var(--r99);
-  padding:3px;
-  box-shadow:var(--sh-xs);
-  gap:2px;
+  border-radius:var(--r12);
+  padding:7px 10px 8px;
+  box-shadow:var(--sh-sm);
+  gap:6px;
 }
 .model-group-label{
-  font-size:10px;font-weight:600;color:var(--ink-3);
-  letter-spacing:.1em;text-transform:uppercase;
-  padding:0 10px 0 8px;
-  border-right:1px solid var(--border2);
-  margin-right:4px;
-  white-space:nowrap;
+  font-size:10px;font-weight:700;color:var(--ink-3);
+  letter-spacing:.12em;text-transform:uppercase;
+  padding-bottom:4px;
+  border-bottom:1px solid var(--border2);
+  width:100%;
 }
+.model-pills-row{display:flex;gap:5px;flex-wrap:wrap}
 .mpill{
-  padding:5px 12px;border-radius:var(--r99);border:none;
+  padding:5px 11px;border-radius:var(--r99);border:1px solid var(--border);
   font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
-  color:var(--ink-2);background:transparent;cursor:pointer;
+  color:var(--ink-2);background:var(--page);cursor:pointer;
   transition:all .2s var(--ease);white-space:nowrap;
+  position:relative;
 }
-.mpill:hover{color:var(--ink);background:var(--page)}
+.mpill:hover{
+  color:var(--terra);background:var(--terra-bg);
+  border-color:var(--terra-rim);
+  transform:translateY(-2px);box-shadow:var(--sh-sm);
+}
 .mpill.on{
-  background:var(--terra);color:#fff;
-  box-shadow:0 2px 10px rgba(196,120,90,.35);
+  background:var(--terra);color:#fff;border-color:var(--terra);
+  box-shadow:0 3px 12px rgba(196,120,90,.4);
   font-weight:600;
 }
-.mpill:active{transform:scale(.95)}
-
-/* Watermark */
-.wm{
-  position:fixed;top:15px;right:18px;z-index:9999;
-  font-size:11px;font-weight:600;color:var(--terra);
-  opacity:.75;letter-spacing:.05em;pointer-events:none;
-  text-shadow:0 1px 6px rgba(196,120,90,.2);
+.mpill.on::before{
+  content:'';
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:#fff;opacity:.85;margin-right:5px;
+  vertical-align:middle;margin-bottom:1px;
 }
+.mpill:active{transform:scale(.95) translateY(0)}
+/* Tooltip on hover */
+.mpill[data-tip]:hover::after{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;
+  font-size:10px;font-weight:400;white-space:nowrap;
+  padding:4px 8px;border-radius:6px;pointer-events:none;
+  box-shadow:var(--sh-sm);z-index:99;
+}
+
+/* Watermark — moved to sidebar footer, not topbar */
+.wm{display:none}
 
 /* ════════════════════════════════════════
    BODY SHELL  (sidebar + main)
@@ -246,7 +261,12 @@ body::before{
 
 .sb-foot{
   padding:10px 14px;border-top:1px solid var(--border2);
-  font-size:11px;color:var(--ink-4);text-align:center;
+  font-size:11px;color:var(--ink-4);
+  display:flex;flex-direction:column;gap:3px;
+}
+.sb-foot-credit{
+  font-size:11px;font-weight:600;color:var(--terra);
+  opacity:.75;letter-spacing:.03em;
 }
 
 /* ════════════════════════════════════════
@@ -503,12 +523,14 @@ body::before{
   <div class="tb-gap"></div>
 
   <div class="model-group">
-    <div class="model-group-label">Model</div>
-    <button class="mpill on" onclick="pickM(this)">GPT-4o</button>
-    <button class="mpill" onclick="pickM(this)">GPT-4</button>
-    <button class="mpill" onclick="pickM(this)">Llama 3</button>
-    <button class="mpill" onclick="pickM(this)">Qwen</button>
-    <button class="mpill" onclick="pickM(this)">Gemma</button>
+    <div class="model-group-label">AI Engine — select model</div>
+    <div class="model-pills-row">
+      <button class="mpill on" onclick="pickM(this)" data-tip="OpenAI · Best overall">GPT-4o</button>
+      <button class="mpill" onclick="pickM(this)" data-tip="OpenAI · Large context">GPT-4 Turbo</button>
+      <button class="mpill" onclick="pickM(this)" data-tip="Meta · Fast open-source">Llama 3.3</button>
+      <button class="mpill" onclick="pickM(this)" data-tip="Alibaba · Deep reasoning">Qwen 2.5</button>
+      <button class="mpill" onclick="pickM(this)" data-tip="Google · Lightweight">Gemma 2</button>
+    </div>
   </div>
 </div>
 
@@ -544,7 +566,10 @@ body::before{
       </div>
     </div>
 
-    <div class="sb-foot">Deep Agents Enhanced · v1.0</div>
+    <div class="sb-foot">
+      <div>Deep Agents Enhanced · v1.0</div>
+      <div class="sb-foot-credit">Made by Prathamesh Mishra</div>
+    </div>
   </aside>
 
   <!-- ── MAIN ── -->
