@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "PowerShell(head *)",
-      "PowerShell(Get-ChildItem \"C:\\\\Deeplearning _agents\" -Recurse -Exclude \".claude\" | Where-Object { !$_.FullName.Contains\\(\".claude\"\\) } | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Deeplearning _agents\\\\\", \"\"\\) })"
+      "PowerShell(Get-ChildItem \"C:\\\\Deeplearning _agents\" -Recurse -Exclude \".claude\" | Where-Object { !$_.FullName.Contains\\(\".claude\"\\) } | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Deeplearning _agents\\\\\", \"\"\\) })",
+      "Bash(git remote *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
