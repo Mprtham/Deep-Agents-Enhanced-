@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(head *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Deeplearning _agents\" -Recurse -Exclude \".claude\" | Where-Object { !$_.FullName.Contains\\(\".claude\"\\) } | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Deeplearning _agents\\\\\", \"\"\\) })"
+    ]
+  }
+}
