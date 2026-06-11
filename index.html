@@ -158,20 +158,21 @@ body::before{
   box-shadow:var(--sh-sm);z-index:99;
 }
 
-/* Local (Ollama) pill variant */
+/* Local (Ollama) pill variant — warm sage to stay within site palette */
 .mpill.local{
-  color:var(--purple);
-  border-color:rgba(108,92,231,.22);
-  background:rgba(108,92,231,.05);
+  color:var(--sage);
+  border-color:rgba(122,145,112,.25);
+  background:rgba(122,145,112,.05);
 }
 .mpill.local:hover{
-  color:var(--purple);background:rgba(108,92,231,.12);
-  border-color:rgba(108,92,231,.4);
+  color:var(--sage);background:var(--sage-bg);
+  border-color:rgba(122,145,112,.45);
   transform:translateY(-2px);box-shadow:var(--sh-sm);
 }
 .mpill.local.on{
-  background:var(--purple);color:#fff;border-color:var(--purple);
-  box-shadow:0 3px 12px rgba(108,92,231,.4);
+  background:var(--sage);color:#fff;border-color:var(--sage);
+  box-shadow:0 3px 12px rgba(122,145,112,.38);
+  font-weight:600;
 }
 .mpill-sep{
   font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
@@ -571,7 +572,7 @@ body::before{
 <div class="topbar">
   <div class="tb-brand">
     <div class="tb-logo">🧠</div>
-    <div class="tb-name">Deep Agents<span>—Enhanced</span></div>
+    <div class="tb-name">Deep Agents<span> Enhanced</span></div>
   </div>
 
   <div class="tb-status">
@@ -582,7 +583,7 @@ body::before{
   <div class="tb-gap"></div>
 
   <div class="model-group">
-    <div class="model-group-label">AI Engine — select model</div>
+    <div class="model-group-label">AI Engine · select model</div>
     <div class="model-pills-row">
       <span class="mpill-sep">☁</span>
       <button class="mpill on" data-model="GPT-4o"      data-tip="OpenAI · Best overall">GPT-4o</button>
@@ -611,15 +612,15 @@ body::before{
       <input type="password" id="keyOpenAI" placeholder="sk-…" autocomplete="off"/>
     </div>
     <div class="kf">
-      <label>Groq Key <small>(Llama 3.3, Qwen 2.5, Gemma 2 — free at console.groq.com)</small></label>
+      <label>Groq Key <small>(Llama 3.3, Qwen 2.5, Gemma 2 · free at console.groq.com)</small></label>
       <input type="password" id="keyGroq" placeholder="gsk_…" autocomplete="off"/>
     </div>
     <div class="kf">
-      <label>Ollama URL <small>(local — default is localhost:11434)</small></label>
+      <label>Ollama URL <small>(local · default: localhost:11434)</small></label>
       <input type="text" id="keyOllama" placeholder="http://localhost:11434" autocomplete="off"/>
     </div>
     <button class="key-save" id="keySaveBtn">Save</button>
-    <div class="key-hint">Cloud keys stay in your browser only. Ollama runs fully local — no key needed.</div>
+    <div class="key-hint">Cloud keys stay in your browser only. Ollama runs fully local, no key needed.</div>
   </div>
 </div>
 
@@ -688,7 +689,7 @@ body::before{
       <div class="welcome" id="welcomeCard">
         <div class="w-eyebrow">✦ AI Agent Platform</div>
         <div class="w-title">
-          Meet <em>Deep Agents</em> —<br>
+          Meet <em>Deep Agents</em>:<br>
           your AI that thinks, plans &amp; acts.
         </div>
         <p class="w-body">
@@ -696,7 +697,7 @@ body::before{
           using LangGraph and LangChain. It reasons step-by-step, searches the live internet via Tavily,
           coordinates specialist sub-agents for complex research and structured data extraction, reads and
           writes files, and streams every response token by token. Switch between GPT-4o, Llama 3, Qwen
-          and more — all in one click.
+          and more, all in one click.
         </p>
         <div class="w-chips">
           <div class="wchip">🔎 Live web search</div>
@@ -987,7 +988,7 @@ body::before{
       wc.id='welcomeCard';wc.className='welcome';
       wc.innerHTML=`
         <div class="w-eyebrow">✦ AI Agent Platform</div>
-        <div class="w-title">Meet <em>Deep Agents</em> —<br>your AI that thinks, plans &amp; acts.</div>
+        <div class="w-title">Meet <em>Deep Agents</em>:<br>your AI that thinks, plans &amp; acts.</div>
         <p class="w-body">Deep Agents Enhanced is a production-grade AI assistant built by
         <strong>Prathamesh Mishra</strong> using LangGraph and LangChain.
         Add your API key above, then ask anything.</p>
