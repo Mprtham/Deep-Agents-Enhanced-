@@ -491,6 +491,44 @@ body::before{
 .send-btn:active{transform:scale(.95)}
 .input-hint{font-size:11px;color:var(--ink-4);text-align:center;margin-top:8px}
 
+/* ── API Keys panel ── */
+.keys-btn{
+  padding:6px 13px;border-radius:var(--r8);
+  border:1px solid var(--border);background:var(--surface);
+  color:var(--ink-2);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  cursor:pointer;margin-left:10px;transition:all .18s var(--ease);white-space:nowrap;
+}
+.keys-btn:hover{background:var(--terra-bg);border-color:var(--terra-rim);color:var(--terra)}
+.keys-btn.ok{border-color:var(--sage);color:var(--sage);background:var(--sage-bg)}
+.keys-panel{
+  max-height:0;overflow:hidden;opacity:0;flex-shrink:0;
+  transition:max-height .3s ease,opacity .25s;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.keys-panel.open{max-height:140px;opacity:1}
+.keys-inner{
+  display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;
+  padding:14px 24px;
+}
+.kf{display:flex;flex-direction:column;gap:4px}
+.kf label{font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}
+.kf label small{font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-4)}
+.kf input{
+  width:230px;padding:7px 11px;border-radius:var(--r8);
+  border:1px solid var(--border);background:var(--page);
+  font-family:'Inter',sans-serif;font-size:12px;color:var(--ink);outline:none;
+  transition:border-color .15s;
+}
+.kf input:focus{border-color:var(--terra-rim)}
+.key-save{
+  padding:7px 18px;border-radius:var(--r8);border:none;
+  background:var(--terra);color:#fff;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;transition:background .15s;
+}
+.key-save:hover{background:#b56a4e}
+.key-hint{font-size:10px;color:var(--ink-4);line-height:1.5;max-width:180px}
+
 /* ── Responsive ── */
 @media(max-width:780px){
   .sidebar{display:none}
@@ -531,6 +569,24 @@ body::before{
       <button class="mpill" data-tip="Alibaba · Deep reasoning">Qwen 2.5</button>
       <button class="mpill" data-tip="Google · Lightweight">Gemma 2</button>
     </div>
+  </div>
+
+  <button class="keys-btn" id="keysBtn">⚙ API Keys</button>
+</div>
+
+<!-- ══ KEYS PANEL ════════════════════════════════════════ -->
+<div class="keys-panel" id="keysPanel">
+  <div class="keys-inner">
+    <div class="kf">
+      <label>OpenAI Key <small>(GPT-4o, GPT-4 Turbo)</small></label>
+      <input type="password" id="keyOpenAI" placeholder="sk-…" autocomplete="off"/>
+    </div>
+    <div class="kf">
+      <label>Groq Key <small>(Llama 3.3, Qwen 2.5, Gemma 2 — free at console.groq.com)</small></label>
+      <input type="password" id="keyGroq" placeholder="gsk_…" autocomplete="off"/>
+    </div>
+    <button class="key-save" id="keySaveBtn">Save</button>
+    <div class="key-hint">Keys stay in your browser only — never sent anywhere except the model provider.</div>
   </div>
 </div>
 
@@ -679,54 +735,122 @@ body::before{
 (function(){
   'use strict';
 
-  /* ── demo reply bank ── */
-  const REPLIES={
-    greet:[
-      `Hi there! I'm Deep Agents Enhanced — your AI that thinks, plans, and acts.\n\nI can help you with **research**, **code generation**, **trend analysis**, **data extraction**, and more. What would you like to work on today?`,
-    ],
-    research:[
-      `I've outlined a 3-step plan and executed each:\n\n1. Searched live web for current data\n2. Delegated structured extraction to a research sub-agent\n3. Synthesised results into a clean summary\n\n**Top 5 AI startups in 2026 by funding:** Cognition AI ($2B), xAI ($6B), Mistral AI ($1.1B), Cohere ($500M), and Poolside ($400M) — all focused on agentic systems and autonomous code generation.`,
-      `**Key AI trends (last 3 months):**\n\n• Agentic AI is now mainstream — LLMs acting autonomously\n• Multimodal capabilities standard across major providers\n• On-device models surging for privacy-first use cases\n• Cost per token dropped ~80% compared to 2024\n\nSources: TechCrunch, ArXiv, Sequoia Capital blog`,
-    ],
-    code:[
-      `Here's a clean async Python scraper:\n\`\`\`python\nimport asyncio, aiohttp\n\nasync def fetch(url, session):\n    async with session.get(url) as r:\n        return await r.json()\n\nasync def main(urls):\n    async with aiohttp.ClientSession() as s:\n        return await asyncio.gather(*[fetch(u, s) for u in urls])\n\`\`\`\nRetry logic and rate-limiting available on request.`,
-    ],
-    data:[
-      `Done — output written to \`projects/output.json\`:\n\`\`\`json\n{\n  "competitor": "Acme AI",\n  "plan": "Pro",\n  "price_usd": 49,\n  "period": "monthly"\n}\`\`\``,
-    ],
-    fallback:[
-      `Got it! Let me work on that.\n\nI'll search the web for the most current information, break it into steps, and synthesise a clear answer for you. Give me a moment…\n\n*(In the live version, this connects to LangGraph + Tavily for real-time results.)*`,
-    ],
+  /* ════ MODEL ROUTING ════════════════════════════════════ */
+  const MODEL_CONFIG={
+    'GPT-4o':     {provider:'openai', model:'gpt-4o'},
+    'GPT-4 Turbo':{provider:'openai', model:'gpt-4-turbo'},
+    'Llama 3.3':  {provider:'groq',   model:'llama-3.3-70b-versatile'},
+    'Qwen 2.5':   {provider:'groq',   model:'qwen-2.5-72b-instruct'},
+    'Gemma 2':    {provider:'groq',   model:'gemma2-9b-it'},
   };
-  /* bucket reply counters, isolated per category */
-  const ri={greet:0,research:0,code:0,data:0,fallback:0};
+  const OPENAI_URL='https://api.openai.com/v1/chat/completions';
+  const GROQ_URL  ='https://api.groq.com/openai/v1/chat/completions';
+  const SYSTEM_MSG={role:'system',content:
+    'You are Deep Agents Enhanced, a production-grade AI assistant built by Prathamesh Mishra. '+
+    'You help with research, code generation, data analysis, trend analysis, and general questions. '+
+    'Be concise, accurate, and helpful. Use markdown for code blocks and structured answers.'
+  };
+
+  /* ════ STATE ════════════════════════════════════════════ */
+  let history=[];          /* conversation history for current session */
+  let apiKeys={openai:'',groq:''};
+  let isWaiting=false;
   let newOpen=false;
   let welcomeCleared=false;
 
-  function pickReply(txt){
-    const t=txt.toLowerCase();
-    if(/^(hi+|hello+|hey+|howdy|greetings|sup|what'?s up)[!?.\s]*$/i.test(t)||t.length<6){
-      const b=REPLIES.greet;return b[ri.greet++%b.length];
+  function initHistory(){history=[SYSTEM_MSG];}
+  initHistory();
+
+  /* ════ API KEYS (localStorage) ══════════════════════════ */
+  function loadKeys(){
+    try{
+      apiKeys.openai=localStorage.getItem('da_openai')||'';
+      apiKeys.groq  =localStorage.getItem('da_groq')  ||'';
+    }catch(e){}
+  }
+  function saveKeys(){
+    try{
+      const ko=document.getElementById('keyOpenAI').value.trim();
+      const kg=document.getElementById('keyGroq').value.trim();
+      if(ko)apiKeys.openai=ko;
+      if(kg)apiKeys.groq=kg;
+      localStorage.setItem('da_openai',apiKeys.openai);
+      localStorage.setItem('da_groq',  apiKeys.groq);
+    }catch(e){}
+    updateKeyBtn();
+    closeKeysPanel();
+  }
+  function updateKeyBtn(){
+    const btn=document.getElementById('keysBtn');
+    if(!btn)return;
+    const hasAny=apiKeys.openai||apiKeys.groq;
+    btn.classList.toggle('ok',!!hasAny);
+    btn.textContent=hasAny?'✓ API Keys':'⚙ API Keys';
+  }
+  let keysPanelOpen=false;
+  function toggleKeysPanel(){
+    keysPanelOpen=!keysPanelOpen;
+    document.getElementById('keysPanel').classList.toggle('open',keysPanelOpen);
+    if(keysPanelOpen){
+      /* pre-fill masked placeholder so user knows keys exist */
+      const oEl=document.getElementById('keyOpenAI');
+      const gEl=document.getElementById('keyGroq');
+      oEl.placeholder=apiKeys.openai?'(saved — paste to replace)':'sk-…';
+      gEl.placeholder=apiKeys.groq  ?'(saved — paste to replace)':'gsk_…';
     }
-    if(/research|startup|fund|invest|company|companies|trend|news|summary|summari/i.test(t)){
-      const b=REPLIES.research;return b[ri.research++%b.length];
-    }
-    if(/code|script|python|function|class|debug|error|implement|write|build/i.test(t)){
-      const b=REPLIES.code;return b[ri.code++%b.length];
-    }
-    if(/data|extract|json|csv|table|structured|scrape|parse/i.test(t)){
-      const b=REPLIES.data;return b[ri.data++%b.length];
-    }
-    const b=REPLIES.fallback;return b[ri.fallback++%b.length];
+  }
+  function closeKeysPanel(){
+    keysPanelOpen=false;
+    document.getElementById('keysPanel').classList.remove('open');
   }
 
-  /* ── helpers ── */
+  /* ════ LLM CALL ═════════════════════════════════════════ */
+  async function callLLM(userText){
+    const modelName=activeM();
+    const cfg=MODEL_CONFIG[modelName]||MODEL_CONFIG['GPT-4o'];
+    const key=cfg.provider==='openai'?apiKeys.openai:apiKeys.groq;
+    if(!key){
+      const providerLabel=cfg.provider==='openai'?'OpenAI':'Groq (free at console.groq.com)';
+      throw new Error(`No ${providerLabel} API key saved. Click "⚙ API Keys" to add one.`);
+    }
+    const url=cfg.provider==='openai'?OPENAI_URL:GROQ_URL;
+    history.push({role:'user',content:userText});
+    let resp;
+    try{
+      resp=await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({model:cfg.model,messages:history,max_tokens:1024,temperature:0.7}),
+      });
+    }catch(netErr){
+      history.pop();
+      throw new Error('Network error — check your connection.');
+    }
+    if(!resp.ok){
+      history.pop();
+      let msg='API error '+resp.status;
+      try{const j=await resp.json();msg=j.error?.message||msg;}catch(e){}
+      if(resp.status===401)msg='Invalid API key. Click "⚙ API Keys" to fix it.';
+      if(resp.status===429)msg='Rate limit reached. Wait a moment and try again.';
+      throw new Error(msg);
+    }
+    const data=await resp.json();
+    const reply=data.choices?.[0]?.message?.content||'(empty response)';
+    history.push({role:'assistant',content:reply});
+    return reply;
+  }
+
+  /* ════ HELPERS ══════════════════════════════════════════ */
   function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
-  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
   function fmt(s){
     return s
       .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-      .replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:var(--page);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;margin:10px 0;line-height:1.5"><code>$1</code></pre>')
+      .replace(/\*(.*?)\*/g,'<em>$1</em>')
+      .replace(/```([\w]*)\n?([\s\S]*?)```/g,(_,lang,code)=>
+        `<pre style="background:var(--page);border:1px solid var(--border);border-radius:8px;`+
+        `padding:12px;font-size:12px;overflow-x:auto;margin:10px 0;line-height:1.5">`+
+        `<code>${esc(code.replace(/\n$/,''))}</code></pre>`)
       .replace(/`([^`]+)`/g,'<code style="background:var(--page);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px">$1</code>')
       .replace(/\n/g,'<br>');
   }
@@ -738,8 +862,14 @@ body::before{
     return a?a.textContent.trim():'GPT-4o';
   }
   function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px'}
+  function setSendEnabled(on){
+    const btn=document.getElementById('sendBtn');
+    const ta=document.getElementById('ta');
+    if(btn)btn.disabled=!on;
+    if(ta)ta.disabled=!on;
+  }
 
-  /* ── model picker ── */
+  /* ════ MODEL PICKER ═════════════════════════════════════ */
   function pickM(el){
     document.querySelectorAll('.mpill').forEach(p=>p.classList.remove('on'));
     el.classList.add('on');
@@ -747,13 +877,12 @@ body::before{
     setTimeout(()=>el.style.transform='',200);
   }
 
-  /* ── new chat menu ── */
+  /* ════ NEW CHAT MENU ════════════════════════════════════ */
   function toggleNew(){
     newOpen=!newOpen;
     document.getElementById('newOpts').classList.toggle('open',newOpen);
     document.getElementById('newBtn').classList.toggle('open',newOpen);
   }
-
   function addConv(type,icon,label){
     newOpen=false;
     document.getElementById('newOpts').classList.remove('open');
@@ -778,7 +907,7 @@ body::before{
     resetChat();
   }
 
-  /* removes only the welcome/prompt panels — called once on first send */
+  /* ════ CHAT AREA MANAGEMENT ═════════════════════════════ */
   function clearWelcome(){
     if(welcomeCleared)return;
     welcomeCleared=true;
@@ -786,13 +915,11 @@ body::before{
       const el=document.getElementById(id);if(el)el.remove();
     });
   }
-
-  /* full reset for new-chat — wipes messages and re-shows welcome */
   function resetChat(){
+    initHistory();
     welcomeCleared=false;
     document.querySelectorAll('.msg-row').forEach(r=>r.remove());
     document.getElementById('thinkEl').style.display='none';
-    /* rebuild welcome + prompt section if they were previously removed */
     const sc=document.getElementById('chatScroll');
     if(!document.getElementById('welcomeCard')){
       const wc=document.createElement('div');
@@ -800,8 +927,9 @@ body::before{
       wc.innerHTML=`
         <div class="w-eyebrow">✦ AI Agent Platform</div>
         <div class="w-title">Meet <em>Deep Agents</em> —<br>your AI that thinks, plans &amp; acts.</div>
-        <p class="w-body">Deep Agents Enhanced is a production-grade AI assistant built by <strong>Prathamesh Mishra</strong>
-        using LangGraph and LangChain. Switch between GPT-4o, Llama 3, Qwen and more — all in one click.</p>
+        <p class="w-body">Deep Agents Enhanced is a production-grade AI assistant built by
+        <strong>Prathamesh Mishra</strong> using LangGraph and LangChain.
+        Add your API key above, then ask anything.</p>
         <div class="w-chips">
           <div class="wchip">🔎 Live web search</div>
           <div class="wchip">📋 Step-by-step planning</div>
@@ -814,24 +942,25 @@ body::before{
     }
   }
 
-  /* ── fill prompt ── */
+  /* ════ FILL PROMPT ══════════════════════════════════════ */
   function fill(t){
     const ta=document.getElementById('ta');
-    ta.value=t;
-    resize(ta);
-    ta.focus();
+    ta.value=t;resize(ta);ta.focus();
   }
 
-  /* ── send ── */
-  function send(){
+  /* ════ SEND ═════════════════════════════════════════════ */
+  async function send(){
+    if(isWaiting)return;
     const ta=document.getElementById('ta');
     const txt=ta.value.trim();
     if(!txt)return;
     ta.value='';ta.style.height='auto';
-    clearWelcome();                          /* one-time: only removes welcome/prompt panels */
-    const reply=pickReply(txt);              /* choose response based on content */
+    clearWelcome();
+
     const sc=document.getElementById('chatScroll');
     const think=document.getElementById('thinkEl');
+
+    /* render user bubble immediately */
     const uRow=document.createElement('div');
     uRow.className='msg-row user';
     uRow.innerHTML=`<div><div class="ubub">${esc(txt)}</div><div class="mtime r">${now()}</div></div>`;
@@ -839,7 +968,12 @@ body::before{
     think.style.display='block';
     sc.appendChild(think);
     setTimeout(()=>scrollBot(),60);
-    setTimeout(()=>{
+
+    isWaiting=true;
+    setSendEnabled(false);
+
+    try{
+      const reply=await callLLM(txt);
       think.style.display='none';
       const aRow=document.createElement('div');
       aRow.className='msg-row';
@@ -847,44 +981,57 @@ body::before{
         <div class="arow">
           <div class="aav">🧠</div>
           <div>
-            <div class="abub">${fmt(reply)}
-              <div class="strace">
-                <div class="strace-item">🔎 Searched 4 live sources</div>
-                <div class="strace-item">📋 3-step plan executed</div>
-              </div>
-            </div>
+            <div class="abub">${fmt(reply)}</div>
             <div class="mtime">${now()} · ${activeM()}</div>
           </div>
         </div>`;
       sc.insertBefore(aRow,think);
       sc.appendChild(think);
+    }catch(err){
+      think.style.display='none';
+      const errRow=document.createElement('div');
+      errRow.className='msg-row';
+      errRow.innerHTML=`
+        <div class="arow">
+          <div class="aav" style="background:linear-gradient(135deg,#E8C9B8,#C4785A)">⚠</div>
+          <div>
+            <div class="abub" style="border-color:var(--terra-rim);color:var(--terra)">${esc(err.message)}</div>
+            <div class="mtime">${now()}</div>
+          </div>
+        </div>`;
+      sc.insertBefore(errRow,think);
+      sc.appendChild(think);
+    }finally{
+      isWaiting=false;
+      setSendEnabled(true);
       setTimeout(()=>scrollBot(),60);
-    },1700+Math.random()*600);
+    }
   }
 
-  /* bfcache: browser restores stale DOM when user hits Back — force a clean reload */
+  /* ════ BFCACHE ══════════════════════════════════════════ */
   window.addEventListener('pageshow',function(e){
-    if(e.persisted){location.reload();}
+    if(e.persisted)location.reload();
   });
 
-  /* ── wire up all listeners after DOM is ready ── */
+  /* ════ INIT ═════════════════════════════════════════════ */
   document.addEventListener('DOMContentLoaded',function(){
     try{
+      loadKeys();
+      updateKeyBtn();
+
       /* model pills */
       document.querySelectorAll('.mpill').forEach(btn=>{
         btn.addEventListener('click',()=>pickM(btn));
       });
 
-      /* new chat button */
-      document.getElementById('newBtn').addEventListener('click',toggleNew);
+      /* API keys panel */
+      document.getElementById('keysBtn').addEventListener('click',toggleKeysPanel);
+      document.getElementById('keySaveBtn').addEventListener('click',saveKeys);
 
-      /* new chat sub-options */
+      /* new chat button + sub-options */
+      document.getElementById('newBtn').addEventListener('click',toggleNew);
       document.querySelectorAll('.new-opt').forEach(opt=>{
-        opt.addEventListener('click',()=>addConv(
-          opt.dataset.conv,
-          opt.dataset.icon,
-          opt.dataset.label
-        ));
+        opt.addEventListener('click',()=>addConv(opt.dataset.conv,opt.dataset.icon,opt.dataset.label));
       });
 
       /* prompt suggestion cards */
@@ -894,9 +1041,7 @@ body::before{
 
       /* textarea */
       const ta=document.getElementById('ta');
-      ta.addEventListener('keydown',function(e){
-        if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
-      });
+      ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
       ta.addEventListener('input',function(){resize(this)});
 
       /* send button */
