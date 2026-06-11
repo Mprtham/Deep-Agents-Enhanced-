@@ -679,14 +679,46 @@ body::before{
 (function(){
   'use strict';
 
-  /* ── isolated state ── */
-  const replies=[
-    `I've outlined a 3-step plan and executed each:\n\n1. Searched live web for current data\n2. Delegated structured extraction to a research sub-agent\n3. Synthesised results into a clean summary\n\n**Top 5 AI startups in 2026 by funding:** Cognition AI ($2B), xAI ($6B), Mistral AI ($1.1B), Cohere ($500M), and Poolside ($400M) — all focused on agentic systems and autonomous code generation.`,
-    `Here's a clean async Python scraper:\n\`\`\`python\nimport asyncio, aiohttp\n\nasync def fetch(url, session):\n    async with session.get(url) as r:\n        return await r.json()\n\nasync def main(urls):\n    async with aiohttp.ClientSession() as s:\n        return await asyncio.gather(*[fetch(u, s) for u in urls])\n\`\`\`\nRetry logic and rate-limiting available on request.`,
-    `**Key AI trends (last 3 months):**\n\n• Agentic AI is now mainstream — LLMs acting autonomously\n• Multimodal capabilities standard across major providers\n• On-device models surging for privacy-first use cases\n• Cost per token dropped ~80% compared to 2024\n\nSources: TechCrunch, ArXiv, Sequoia Capital blog`,
-    `Done — output written to \`projects/output.json\`:\n\`\`\`json\n{\n  "competitor": "Acme AI",\n  "plan": "Pro",\n  "price_usd": 49,\n  "period": "monthly"\n}\`\`\``,
-  ];
-  let ri=0, newOpen=false;
+  /* ── demo reply bank ── */
+  const REPLIES={
+    greet:[
+      `Hi there! I'm Deep Agents Enhanced — your AI that thinks, plans, and acts.\n\nI can help you with **research**, **code generation**, **trend analysis**, **data extraction**, and more. What would you like to work on today?`,
+    ],
+    research:[
+      `I've outlined a 3-step plan and executed each:\n\n1. Searched live web for current data\n2. Delegated structured extraction to a research sub-agent\n3. Synthesised results into a clean summary\n\n**Top 5 AI startups in 2026 by funding:** Cognition AI ($2B), xAI ($6B), Mistral AI ($1.1B), Cohere ($500M), and Poolside ($400M) — all focused on agentic systems and autonomous code generation.`,
+      `**Key AI trends (last 3 months):**\n\n• Agentic AI is now mainstream — LLMs acting autonomously\n• Multimodal capabilities standard across major providers\n• On-device models surging for privacy-first use cases\n• Cost per token dropped ~80% compared to 2024\n\nSources: TechCrunch, ArXiv, Sequoia Capital blog`,
+    ],
+    code:[
+      `Here's a clean async Python scraper:\n\`\`\`python\nimport asyncio, aiohttp\n\nasync def fetch(url, session):\n    async with session.get(url) as r:\n        return await r.json()\n\nasync def main(urls):\n    async with aiohttp.ClientSession() as s:\n        return await asyncio.gather(*[fetch(u, s) for u in urls])\n\`\`\`\nRetry logic and rate-limiting available on request.`,
+    ],
+    data:[
+      `Done — output written to \`projects/output.json\`:\n\`\`\`json\n{\n  "competitor": "Acme AI",\n  "plan": "Pro",\n  "price_usd": 49,\n  "period": "monthly"\n}\`\`\``,
+    ],
+    fallback:[
+      `Got it! Let me work on that.\n\nI'll search the web for the most current information, break it into steps, and synthesise a clear answer for you. Give me a moment…\n\n*(In the live version, this connects to LangGraph + Tavily for real-time results.)*`,
+    ],
+  };
+  /* bucket reply counters, isolated per category */
+  const ri={greet:0,research:0,code:0,data:0,fallback:0};
+  let newOpen=false;
+  let welcomeCleared=false;
+
+  function pickReply(txt){
+    const t=txt.toLowerCase();
+    if(/^(hi+|hello+|hey+|howdy|greetings|sup|what'?s up)[!?.\s]*$/i.test(t)||t.length<6){
+      const b=REPLIES.greet;return b[ri.greet++%b.length];
+    }
+    if(/research|startup|fund|invest|company|companies|trend|news|summary|summari/i.test(t)){
+      const b=REPLIES.research;return b[ri.research++%b.length];
+    }
+    if(/code|script|python|function|class|debug|error|implement|write|build/i.test(t)){
+      const b=REPLIES.code;return b[ri.code++%b.length];
+    }
+    if(/data|extract|json|csv|table|structured|scrape|parse/i.test(t)){
+      const b=REPLIES.data;return b[ri.data++%b.length];
+    }
+    const b=REPLIES.fallback;return b[ri.fallback++%b.length];
+  }
 
   /* ── helpers ── */
   function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
@@ -743,16 +775,43 @@ body::before{
       item.classList.add('active');
     });
     sc.prepend(item);
-    clearMain();
+    resetChat();
   }
 
-  /* ── clear welcome/prompts ── */
-  function clearMain(){
+  /* removes only the welcome/prompt panels — called once on first send */
+  function clearWelcome(){
+    if(welcomeCleared)return;
+    welcomeCleared=true;
     ['welcomeCard','promptSection'].forEach(id=>{
       const el=document.getElementById(id);if(el)el.remove();
     });
+  }
+
+  /* full reset for new-chat — wipes messages and re-shows welcome */
+  function resetChat(){
+    welcomeCleared=false;
     document.querySelectorAll('.msg-row').forEach(r=>r.remove());
     document.getElementById('thinkEl').style.display='none';
+    /* rebuild welcome + prompt section if they were previously removed */
+    const sc=document.getElementById('chatScroll');
+    if(!document.getElementById('welcomeCard')){
+      const wc=document.createElement('div');
+      wc.id='welcomeCard';wc.className='welcome';
+      wc.innerHTML=`
+        <div class="w-eyebrow">✦ AI Agent Platform</div>
+        <div class="w-title">Meet <em>Deep Agents</em> —<br>your AI that thinks, plans &amp; acts.</div>
+        <p class="w-body">Deep Agents Enhanced is a production-grade AI assistant built by <strong>Prathamesh Mishra</strong>
+        using LangGraph and LangChain. Switch between GPT-4o, Llama 3, Qwen and more — all in one click.</p>
+        <div class="w-chips">
+          <div class="wchip">🔎 Live web search</div>
+          <div class="wchip">📋 Step-by-step planning</div>
+          <div class="wchip">🤖 Sub-agent delegation</div>
+          <div class="wchip">📁 Virtual file system</div>
+          <div class="wchip">⚡ Token streaming</div>
+          <div class="wchip">💬 Conversation memory</div>
+        </div>`;
+      sc.insertBefore(wc,sc.firstChild);
+    }
   }
 
   /* ── fill prompt ── */
@@ -769,7 +828,8 @@ body::before{
     const txt=ta.value.trim();
     if(!txt)return;
     ta.value='';ta.style.height='auto';
-    clearMain();
+    clearWelcome();                          /* one-time: only removes welcome/prompt panels */
+    const reply=pickReply(txt);              /* choose response based on content */
     const sc=document.getElementById('chatScroll');
     const think=document.getElementById('thinkEl');
     const uRow=document.createElement('div');
@@ -787,7 +847,7 @@ body::before{
         <div class="arow">
           <div class="aav">🧠</div>
           <div>
-            <div class="abub">${fmt(replies[ri%replies.length])}
+            <div class="abub">${fmt(reply)}
               <div class="strace">
                 <div class="strace-item">🔎 Searched 4 live sources</div>
                 <div class="strace-item">📋 3-step plan executed</div>
@@ -798,10 +858,14 @@ body::before{
         </div>`;
       sc.insertBefore(aRow,think);
       sc.appendChild(think);
-      ri++;
       setTimeout(()=>scrollBot(),60);
     },1700+Math.random()*600);
   }
+
+  /* bfcache: browser restores stale DOM when user hits Back — force a clean reload */
+  window.addEventListener('pageshow',function(e){
+    if(e.persisted){location.reload();}
+  });
 
   /* ── wire up all listeners after DOM is ready ── */
   document.addEventListener('DOMContentLoaded',function(){
