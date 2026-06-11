@@ -6,7 +6,9 @@
       "Bash(git remote *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -60)"
     ]
   }
 }

@@ -525,11 +525,11 @@ body::before{
   <div class="model-group">
     <div class="model-group-label">AI Engine — select model</div>
     <div class="model-pills-row">
-      <button class="mpill on" onclick="pickM(this)" data-tip="OpenAI · Best overall">GPT-4o</button>
-      <button class="mpill" onclick="pickM(this)" data-tip="OpenAI · Large context">GPT-4 Turbo</button>
-      <button class="mpill" onclick="pickM(this)" data-tip="Meta · Fast open-source">Llama 3.3</button>
-      <button class="mpill" onclick="pickM(this)" data-tip="Alibaba · Deep reasoning">Qwen 2.5</button>
-      <button class="mpill" onclick="pickM(this)" data-tip="Google · Lightweight">Gemma 2</button>
+      <button class="mpill on" data-tip="OpenAI · Best overall">GPT-4o</button>
+      <button class="mpill" data-tip="OpenAI · Large context">GPT-4 Turbo</button>
+      <button class="mpill" data-tip="Meta · Fast open-source">Llama 3.3</button>
+      <button class="mpill" data-tip="Alibaba · Deep reasoning">Qwen 2.5</button>
+      <button class="mpill" data-tip="Google · Lightweight">Gemma 2</button>
     </div>
   </div>
 </div>
@@ -541,18 +541,18 @@ body::before{
   <aside class="sidebar">
     <div class="sb-section">
       <div class="sb-section-label">Conversations</div>
-      <button class="new-btn" id="newBtn" onclick="toggleNew()">
+      <button class="new-btn" id="newBtn">
         <span class="new-btn-icon">＋</span>
         New Chat
       </button>
       <div class="new-opts" id="newOpts">
-        <div class="new-opt" onclick="addConv('research','🔎','Research thread')">
+        <div class="new-opt" data-conv="research" data-icon="🔎" data-label="Research thread">
           <span class="new-opt-icon">🔎</span>Research Agent
         </div>
-        <div class="new-opt" onclick="addConv('code','💻','Code session')">
+        <div class="new-opt" data-conv="code" data-icon="💻" data-label="Code session">
           <span class="new-opt-icon">💻</span>Code Agent
         </div>
-        <div class="new-opt" onclick="addConv('data','📊','Data extraction')">
+        <div class="new-opt" data-conv="data" data-icon="📊" data-label="Data extraction">
           <span class="new-opt-icon">📊</span>Data Extraction
         </div>
       </div>
@@ -624,22 +624,22 @@ body::before{
       <div id="promptSection">
         <div class="prompt-section-label">Try asking…</div>
         <div class="pgrid">
-          <div class="pcard" onclick="fill('Research the top 5 AI startups in 2026 and summarise their funding.')">
+          <div class="pcard" data-fill="Research the top 5 AI startups in 2026 and summarise their funding.">
             <div class="pc-emoji">🔎</div>
             <div class="pc-title">Startup Research</div>
             <div class="pc-desc">Find and summarise the latest AI funding rounds</div>
           </div>
-          <div class="pcard" onclick="fill('Write a Python async web scraper with error handling and retries.')">
+          <div class="pcard" data-fill="Write a Python async web scraper with error handling and retries.">
             <div class="pc-emoji">💻</div>
             <div class="pc-title">Code Generation</div>
             <div class="pc-desc">Write clean, production-ready scripts</div>
           </div>
-          <div class="pcard" onclick="fill('Summarise the key AI trends from the last 3 months.')">
+          <div class="pcard" data-fill="Summarise the key AI trends from the last 3 months.">
             <div class="pc-emoji">📰</div>
             <div class="pc-title">Trend Analysis</div>
             <div class="pc-desc">Digest recent news into sharp insights</div>
           </div>
-          <div class="pcard" onclick="fill('Extract competitor pricing and output as structured JSON.')">
+          <div class="pcard" data-fill="Extract competitor pricing and output as structured JSON.">
             <div class="pc-emoji">📊</div>
             <div class="pc-title">Data Extraction</div>
             <div class="pc-desc">Structure messy data into clean JSON</div>
@@ -666,9 +666,8 @@ body::before{
     <div class="input-wrap">
       <div class="input-card">
         <textarea class="chat-ta" id="ta" rows="1"
-          placeholder="Ask me anything — research, code, analysis, planning…"
-          onkeydown="onKey(event)" oninput="resize(this)"></textarea>
-        <button class="send-btn" onclick="send()" title="Send">➤</button>
+          placeholder="Ask me anything — research, code, analysis, planning…"></textarea>
+        <button class="send-btn" id="sendBtn" title="Send">➤</button>
       </div>
       <div class="input-hint">Enter to send · Shift+Enter for new line · Powered by LangGraph + LangChain</div>
     </div>
@@ -677,121 +676,172 @@ body::before{
 </div>
 
 <script>
-/* ── Model picker ── */
-function pickM(el){
-  document.querySelectorAll('.mpill').forEach(p=>p.classList.remove('on'));
-  el.classList.add('on');
-  el.style.transform='scale(.9)';
-  setTimeout(()=>el.style.transform='',200);
-}
+(function(){
+  'use strict';
 
-/* ── New chat menu ── */
-let newOpen=false;
-function toggleNew(){
-  newOpen=!newOpen;
-  document.getElementById('newOpts').classList.toggle('open',newOpen);
-  document.getElementById('newBtn').classList.toggle('open',newOpen);
-}
+  /* ── isolated state ── */
+  const replies=[
+    `I've outlined a 3-step plan and executed each:\n\n1. Searched live web for current data\n2. Delegated structured extraction to a research sub-agent\n3. Synthesised results into a clean summary\n\n**Top 5 AI startups in 2026 by funding:** Cognition AI ($2B), xAI ($6B), Mistral AI ($1.1B), Cohere ($500M), and Poolside ($400M) — all focused on agentic systems and autonomous code generation.`,
+    `Here's a clean async Python scraper:\n\`\`\`python\nimport asyncio, aiohttp\n\nasync def fetch(url, session):\n    async with session.get(url) as r:\n        return await r.json()\n\nasync def main(urls):\n    async with aiohttp.ClientSession() as s:\n        return await asyncio.gather(*[fetch(u, s) for u in urls])\n\`\`\`\nRetry logic and rate-limiting available on request.`,
+    `**Key AI trends (last 3 months):**\n\n• Agentic AI is now mainstream — LLMs acting autonomously\n• Multimodal capabilities standard across major providers\n• On-device models surging for privacy-first use cases\n• Cost per token dropped ~80% compared to 2024\n\nSources: TechCrunch, ArXiv, Sequoia Capital blog`,
+    `Done — output written to \`projects/output.json\`:\n\`\`\`json\n{\n  "competitor": "Acme AI",\n  "plan": "Pro",\n  "price_usd": 49,\n  "period": "monthly"\n}\`\`\``,
+  ];
+  let ri=0, newOpen=false;
 
-function addConv(type,icon,label){
-  newOpen=false;
-  document.getElementById('newOpts').classList.remove('open');
-  document.getElementById('newBtn').classList.remove('open');
+  /* ── helpers ── */
+  function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function fmt(s){
+    return s
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:var(--page);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;margin:10px 0;line-height:1.5"><code>$1</code></pre>')
+      .replace(/`([^`]+)`/g,'<code style="background:var(--page);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px">$1</code>')
+      .replace(/\n/g,'<br>');
+  }
+  function scrollBot(){
+    try{const s=document.getElementById('chatScroll');s.scrollTop=s.scrollHeight}catch(e){}
+  }
+  function activeM(){
+    const a=document.querySelector('.mpill.on');
+    return a?a.textContent.trim():'GPT-4o';
+  }
+  function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px'}
 
-  const es=document.getElementById('emptyState');
-  if(es)es.remove();
+  /* ── model picker ── */
+  function pickM(el){
+    document.querySelectorAll('.mpill').forEach(p=>p.classList.remove('on'));
+    el.classList.add('on');
+    el.style.transform='scale(.9)';
+    setTimeout(()=>el.style.transform='',200);
+  }
 
-  const sc=document.getElementById('convScroll');
-  sc.querySelectorAll('.conv-item').forEach(i=>i.classList.remove('active'));
+  /* ── new chat menu ── */
+  function toggleNew(){
+    newOpen=!newOpen;
+    document.getElementById('newOpts').classList.toggle('open',newOpen);
+    document.getElementById('newBtn').classList.toggle('open',newOpen);
+  }
 
-  const item=document.createElement('div');
-  item.className='conv-item active';
-  item.innerHTML=`
-    <div class="ci-dot">${icon}</div>
-    <div class="ci-text">
-      <div class="ci-title">${label}</div>
-      <div class="ci-time">just now</div>
-    </div>`;
-  item.onclick=()=>{sc.querySelectorAll('.conv-item').forEach(i=>i.classList.remove('active'));item.classList.add('active')};
-  sc.prepend(item);
-  clearMain();
-}
-
-/* ── Clear welcome/prompts ── */
-function clearMain(){
-  ['welcomeCard','promptSection'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.remove();
-  });
-  document.querySelectorAll('.msg-row').forEach(r=>r.remove());
-  document.getElementById('thinkEl').style.display='none';
-}
-
-/* ── Chat ── */
-const replies=[
-  `I've outlined a 3-step plan and executed each:\n\n1. Searched live web for current data\n2. Delegated structured extraction to a research sub-agent\n3. Synthesised results into a clean summary\n\n**Top 5 AI startups in 2026 by funding:** Cognition AI ($2B), xAI ($6B), Mistral AI ($1.1B), Cohere ($500M), and Poolside ($400M) — all focused on agentic systems and autonomous code generation.`,
-  `Here's a clean async Python scraper:\n\`\`\`python\nimport asyncio, aiohttp\n\nasync def fetch(url, session):\n    async with session.get(url) as r:\n        return await r.json()\n\nasync def main(urls):\n    async with aiohttp.ClientSession() as s:\n        return await asyncio.gather(*[fetch(u, s) for u in urls])\n\`\`\`\nRetry logic and rate-limiting available on request.`,
-  `**Key AI trends (last 3 months):**\n\n• Agentic AI is now mainstream — LLMs acting autonomously\n• Multimodal capabilities standard across major providers\n• On-device models surging for privacy-first use cases\n• Cost per token dropped ~80% compared to 2024\n\nSources: TechCrunch, ArXiv, Sequoia Capital blog`,
-  `Done — output written to \`projects/output.json\`:\n\`\`\`json\n{\n  "competitor": "Acme AI",\n  "plan": "Pro",\n  "price_usd": 49,\n  "period": "monthly"\n}\`\`\``,
-];
-let ri=0;
-
-function send(){
-  const ta=document.getElementById('ta');
-  const txt=ta.value.trim();if(!txt)return;
-  ta.value='';ta.style.height='auto';
-  clearMain();
-
-  const sc=document.getElementById('chatScroll');
-  const think=document.getElementById('thinkEl');
-
-  // User message
-  const uRow=document.createElement('div');
-  uRow.className='msg-row user';
-  uRow.innerHTML=`<div><div class="ubub">${esc(txt)}</div><div class="mtime r">${now()}</div></div>`;
-  sc.insertBefore(uRow,think);
-
-  // Show thinking
-  think.style.display='block';sc.appendChild(think);
-  bot();
-
-  setTimeout(()=>{
-    think.style.display='none';
-    const aRow=document.createElement('div');
-    aRow.className='msg-row';
-    aRow.innerHTML=`
-      <div class="arow">
-        <div class="aav">🧠</div>
-        <div>
-          <div class="abub">${fmt(replies[ri%replies.length])}
-            <div class="strace">
-              <div class="strace-item">🔎 Searched 4 live sources</div>
-              <div class="strace-item">📋 3-step plan executed</div>
-            </div>
-          </div>
-          <div class="mtime">${now()} · ${activeM()}</div>
-        </div>
+  function addConv(type,icon,label){
+    newOpen=false;
+    document.getElementById('newOpts').classList.remove('open');
+    document.getElementById('newBtn').classList.remove('open');
+    const es=document.getElementById('emptyState');
+    if(es)es.remove();
+    const sc=document.getElementById('convScroll');
+    sc.querySelectorAll('.conv-item').forEach(i=>i.classList.remove('active'));
+    const item=document.createElement('div');
+    item.className='conv-item active';
+    item.innerHTML=`
+      <div class="ci-dot">${esc(icon)}</div>
+      <div class="ci-text">
+        <div class="ci-title">${esc(label)}</div>
+        <div class="ci-time">just now</div>
       </div>`;
-    sc.insertBefore(aRow,think);
-    sc.appendChild(think);
-    ri++;bot();
-  },1700+Math.random()*600);
-  bot();
-}
+    item.addEventListener('click',()=>{
+      sc.querySelectorAll('.conv-item').forEach(i=>i.classList.remove('active'));
+      item.classList.add('active');
+    });
+    sc.prepend(item);
+    clearMain();
+  }
 
-function fill(t){document.getElementById('ta').value=t;document.getElementById('ta').focus()}
-function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}}
-function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px'}
-function bot(){setTimeout(()=>{const s=document.getElementById('chatScroll');s.scrollTop=s.scrollHeight},60)}
-function activeM(){const a=document.querySelector('.mpill.on');return a?a.textContent:'GPT-4o'}
-function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function fmt(s){
-  return s
-    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-    .replace(/```[\w]*\n?([\s\S]*?)```/g,'<pre style="background:var(--page);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;margin:10px 0;line-height:1.5"><code>$1</code></pre>')
-    .replace(/`([^`]+)`/g,'<code style="background:var(--page);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px">$1</code>')
-    .replace(/\n/g,'<br>');
-}
+  /* ── clear welcome/prompts ── */
+  function clearMain(){
+    ['welcomeCard','promptSection'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.remove();
+    });
+    document.querySelectorAll('.msg-row').forEach(r=>r.remove());
+    document.getElementById('thinkEl').style.display='none';
+  }
+
+  /* ── fill prompt ── */
+  function fill(t){
+    const ta=document.getElementById('ta');
+    ta.value=t;
+    resize(ta);
+    ta.focus();
+  }
+
+  /* ── send ── */
+  function send(){
+    const ta=document.getElementById('ta');
+    const txt=ta.value.trim();
+    if(!txt)return;
+    ta.value='';ta.style.height='auto';
+    clearMain();
+    const sc=document.getElementById('chatScroll');
+    const think=document.getElementById('thinkEl');
+    const uRow=document.createElement('div');
+    uRow.className='msg-row user';
+    uRow.innerHTML=`<div><div class="ubub">${esc(txt)}</div><div class="mtime r">${now()}</div></div>`;
+    sc.insertBefore(uRow,think);
+    think.style.display='block';
+    sc.appendChild(think);
+    setTimeout(()=>scrollBot(),60);
+    setTimeout(()=>{
+      think.style.display='none';
+      const aRow=document.createElement('div');
+      aRow.className='msg-row';
+      aRow.innerHTML=`
+        <div class="arow">
+          <div class="aav">🧠</div>
+          <div>
+            <div class="abub">${fmt(replies[ri%replies.length])}
+              <div class="strace">
+                <div class="strace-item">🔎 Searched 4 live sources</div>
+                <div class="strace-item">📋 3-step plan executed</div>
+              </div>
+            </div>
+            <div class="mtime">${now()} · ${activeM()}</div>
+          </div>
+        </div>`;
+      sc.insertBefore(aRow,think);
+      sc.appendChild(think);
+      ri++;
+      setTimeout(()=>scrollBot(),60);
+    },1700+Math.random()*600);
+  }
+
+  /* ── wire up all listeners after DOM is ready ── */
+  document.addEventListener('DOMContentLoaded',function(){
+    try{
+      /* model pills */
+      document.querySelectorAll('.mpill').forEach(btn=>{
+        btn.addEventListener('click',()=>pickM(btn));
+      });
+
+      /* new chat button */
+      document.getElementById('newBtn').addEventListener('click',toggleNew);
+
+      /* new chat sub-options */
+      document.querySelectorAll('.new-opt').forEach(opt=>{
+        opt.addEventListener('click',()=>addConv(
+          opt.dataset.conv,
+          opt.dataset.icon,
+          opt.dataset.label
+        ));
+      });
+
+      /* prompt suggestion cards */
+      document.querySelectorAll('.pcard').forEach(card=>{
+        card.addEventListener('click',()=>fill(card.dataset.fill||''));
+      });
+
+      /* textarea */
+      const ta=document.getElementById('ta');
+      ta.addEventListener('keydown',function(e){
+        if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
+      });
+      ta.addEventListener('input',function(){resize(this)});
+
+      /* send button */
+      document.getElementById('sendBtn').addEventListener('click',send);
+    }catch(err){
+      console.error('[DeepAgents] init failed:',err);
+    }
+  });
+})();
 </script>
 </body>
 </html>
