@@ -594,10 +594,9 @@ body::before{
     </div>
     <div class="model-pills-row">
       <span class="mpill-sep">🖥</span>
-      <button class="mpill local" data-model="Llama 3.3 (Local)" data-tip="Ollama · ollama pull llama3.3">Llama 3.3</button>
-      <button class="mpill local" data-model="Qwen 2.5 (Local)"  data-tip="Ollama · ollama pull qwen2.5">Qwen 2.5</button>
-      <button class="mpill local" data-model="Gemma 2 (Local)"   data-tip="Ollama · ollama pull gemma2">Gemma 2</button>
-      <button class="mpill local" data-model="Mistral (Local)"   data-tip="Ollama · ollama pull mistral">Mistral</button>
+      <button class="mpill local" data-model="Qwen 2.5 (Local)"  data-tip="Ollama · qwen2.5:7b">Qwen 2.5</button>
+      <button class="mpill local" data-model="Gemma 2 (Local)"   data-tip="Ollama · gemma2">Gemma 2</button>
+      <button class="mpill local" data-model="Mistral (Local)"   data-tip="Ollama · mistral">Mistral</button>
     </div>
   </div>
 
@@ -779,8 +778,7 @@ body::before{
     'Qwen 2.5':          {provider:'groq',   model:'qwen-2.5-72b-instruct'},
     'Gemma 2':           {provider:'groq',   model:'gemma2-9b-it'},
     /* Local — Ollama */
-    'Llama 3.3 (Local)': {provider:'ollama', model:'llama3.3'},
-    'Qwen 2.5 (Local)':  {provider:'ollama', model:'qwen2.5'},
+    'Qwen 2.5 (Local)':  {provider:'ollama', model:'qwen2.5:7b'},
     'Gemma 2 (Local)':   {provider:'ollama', model:'gemma2'},
     'Mistral (Local)':   {provider:'ollama', model:'mistral'},
   };
