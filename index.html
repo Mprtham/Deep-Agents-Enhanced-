@@ -158,6 +158,27 @@ body::before{
   box-shadow:var(--sh-sm);z-index:99;
 }
 
+/* Local (Ollama) pill variant */
+.mpill.local{
+  color:var(--purple);
+  border-color:rgba(108,92,231,.22);
+  background:rgba(108,92,231,.05);
+}
+.mpill.local:hover{
+  color:var(--purple);background:rgba(108,92,231,.12);
+  border-color:rgba(108,92,231,.4);
+  transform:translateY(-2px);box-shadow:var(--sh-sm);
+}
+.mpill.local.on{
+  background:var(--purple);color:#fff;border-color:var(--purple);
+  box-shadow:0 3px 12px rgba(108,92,231,.4);
+}
+.mpill-sep{
+  font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-4);align-self:center;padding:0 3px;user-select:none;
+}
+.model-pills-row+.model-pills-row{margin-top:4px}
+
 /* Watermark — moved to sidebar footer, not topbar */
 .wm{display:none}
 
@@ -563,11 +584,19 @@ body::before{
   <div class="model-group">
     <div class="model-group-label">AI Engine — select model</div>
     <div class="model-pills-row">
-      <button class="mpill on" data-tip="OpenAI · Best overall">GPT-4o</button>
-      <button class="mpill" data-tip="OpenAI · Large context">GPT-4 Turbo</button>
-      <button class="mpill" data-tip="Meta · Fast open-source">Llama 3.3</button>
-      <button class="mpill" data-tip="Alibaba · Deep reasoning">Qwen 2.5</button>
-      <button class="mpill" data-tip="Google · Lightweight">Gemma 2</button>
+      <span class="mpill-sep">☁</span>
+      <button class="mpill on" data-model="GPT-4o"      data-tip="OpenAI · Best overall">GPT-4o</button>
+      <button class="mpill"    data-model="GPT-4 Turbo" data-tip="OpenAI · Large context">GPT-4 Turbo</button>
+      <button class="mpill"    data-model="Llama 3.3"   data-tip="Groq · Fast open-source">Llama 3.3</button>
+      <button class="mpill"    data-model="Qwen 2.5"    data-tip="Groq · Deep reasoning">Qwen 2.5</button>
+      <button class="mpill"    data-model="Gemma 2"     data-tip="Groq · Lightweight">Gemma 2</button>
+    </div>
+    <div class="model-pills-row">
+      <span class="mpill-sep">🖥</span>
+      <button class="mpill local" data-model="Llama 3.3 (Local)" data-tip="Ollama · ollama pull llama3.3">Llama 3.3</button>
+      <button class="mpill local" data-model="Qwen 2.5 (Local)"  data-tip="Ollama · ollama pull qwen2.5">Qwen 2.5</button>
+      <button class="mpill local" data-model="Gemma 2 (Local)"   data-tip="Ollama · ollama pull gemma2">Gemma 2</button>
+      <button class="mpill local" data-model="Mistral (Local)"   data-tip="Ollama · ollama pull mistral">Mistral</button>
     </div>
   </div>
 
@@ -585,8 +614,12 @@ body::before{
       <label>Groq Key <small>(Llama 3.3, Qwen 2.5, Gemma 2 — free at console.groq.com)</small></label>
       <input type="password" id="keyGroq" placeholder="gsk_…" autocomplete="off"/>
     </div>
+    <div class="kf">
+      <label>Ollama URL <small>(local — default is localhost:11434)</small></label>
+      <input type="text" id="keyOllama" placeholder="http://localhost:11434" autocomplete="off"/>
+    </div>
     <button class="key-save" id="keySaveBtn">Save</button>
-    <div class="key-hint">Keys stay in your browser only — never sent anywhere except the model provider.</div>
+    <div class="key-hint">Cloud keys stay in your browser only. Ollama runs fully local — no key needed.</div>
   </div>
 </div>
 
@@ -737,14 +770,22 @@ body::before{
 
   /* ════ MODEL ROUTING ════════════════════════════════════ */
   const MODEL_CONFIG={
-    'GPT-4o':     {provider:'openai', model:'gpt-4o'},
-    'GPT-4 Turbo':{provider:'openai', model:'gpt-4-turbo'},
-    'Llama 3.3':  {provider:'groq',   model:'llama-3.3-70b-versatile'},
-    'Qwen 2.5':   {provider:'groq',   model:'qwen-2.5-72b-instruct'},
-    'Gemma 2':    {provider:'groq',   model:'gemma2-9b-it'},
+    /* Cloud — OpenAI */
+    'GPT-4o':            {provider:'openai', model:'gpt-4o'},
+    'GPT-4 Turbo':       {provider:'openai', model:'gpt-4-turbo'},
+    /* Cloud — Groq */
+    'Llama 3.3':         {provider:'groq',   model:'llama-3.3-70b-versatile'},
+    'Qwen 2.5':          {provider:'groq',   model:'qwen-2.5-72b-instruct'},
+    'Gemma 2':           {provider:'groq',   model:'gemma2-9b-it'},
+    /* Local — Ollama */
+    'Llama 3.3 (Local)': {provider:'ollama', model:'llama3.3'},
+    'Qwen 2.5 (Local)':  {provider:'ollama', model:'qwen2.5'},
+    'Gemma 2 (Local)':   {provider:'ollama', model:'gemma2'},
+    'Mistral (Local)':   {provider:'ollama', model:'mistral'},
   };
   const OPENAI_URL='https://api.openai.com/v1/chat/completions';
   const GROQ_URL  ='https://api.groq.com/openai/v1/chat/completions';
+  const OLLAMA_DEFAULT='http://localhost:11434';
   const SYSTEM_MSG={role:'system',content:
     'You are Deep Agents Enhanced, a production-grade AI assistant built by Prathamesh Mishra. '+
     'You help with research, code generation, data analysis, trend analysis, and general questions. '+
@@ -753,7 +794,7 @@ body::before{
 
   /* ════ STATE ════════════════════════════════════════════ */
   let history=[];          /* conversation history for current session */
-  let apiKeys={openai:'',groq:''};
+  let apiKeys={openai:'',groq:'',ollamaUrl:''};
   let isWaiting=false;
   let newOpen=false;
   let welcomeCleared=false;
@@ -764,18 +805,22 @@ body::before{
   /* ════ API KEYS (localStorage) ══════════════════════════ */
   function loadKeys(){
     try{
-      apiKeys.openai=localStorage.getItem('da_openai')||'';
-      apiKeys.groq  =localStorage.getItem('da_groq')  ||'';
+      apiKeys.openai   =localStorage.getItem('da_openai')   ||'';
+      apiKeys.groq     =localStorage.getItem('da_groq')     ||'';
+      apiKeys.ollamaUrl=localStorage.getItem('da_ollama_url')||'';
     }catch(e){}
   }
   function saveKeys(){
     try{
       const ko=document.getElementById('keyOpenAI').value.trim();
       const kg=document.getElementById('keyGroq').value.trim();
+      const ku=document.getElementById('keyOllama').value.trim();
       if(ko)apiKeys.openai=ko;
       if(kg)apiKeys.groq=kg;
-      localStorage.setItem('da_openai',apiKeys.openai);
-      localStorage.setItem('da_groq',  apiKeys.groq);
+      if(ku)apiKeys.ollamaUrl=ku;
+      localStorage.setItem('da_openai',    apiKeys.openai);
+      localStorage.setItem('da_groq',      apiKeys.groq);
+      localStorage.setItem('da_ollama_url',apiKeys.ollamaUrl);
     }catch(e){}
     updateKeyBtn();
     closeKeysPanel();
@@ -783,7 +828,7 @@ body::before{
   function updateKeyBtn(){
     const btn=document.getElementById('keysBtn');
     if(!btn)return;
-    const hasAny=apiKeys.openai||apiKeys.groq;
+    const hasAny=apiKeys.openai||apiKeys.groq||apiKeys.ollamaUrl;
     btn.classList.toggle('ok',!!hasAny);
     btn.textContent=hasAny?'✓ API Keys':'⚙ API Keys';
   }
@@ -792,11 +837,12 @@ body::before{
     keysPanelOpen=!keysPanelOpen;
     document.getElementById('keysPanel').classList.toggle('open',keysPanelOpen);
     if(keysPanelOpen){
-      /* pre-fill masked placeholder so user knows keys exist */
       const oEl=document.getElementById('keyOpenAI');
       const gEl=document.getElementById('keyGroq');
-      oEl.placeholder=apiKeys.openai?'(saved — paste to replace)':'sk-…';
-      gEl.placeholder=apiKeys.groq  ?'(saved — paste to replace)':'gsk_…';
+      const uEl=document.getElementById('keyOllama');
+      oEl.placeholder=apiKeys.openai   ?'(saved — paste to replace)':'sk-…';
+      gEl.placeholder=apiKeys.groq     ?'(saved — paste to replace)':'gsk_…';
+      uEl.placeholder=apiKeys.ollamaUrl||'http://localhost:11434';
     }
   }
   function closeKeysPanel(){
@@ -808,12 +854,22 @@ body::before{
   async function callLLM(userText){
     const modelName=activeM();
     const cfg=MODEL_CONFIG[modelName]||MODEL_CONFIG['GPT-4o'];
-    const key=cfg.provider==='openai'?apiKeys.openai:apiKeys.groq;
-    if(!key){
-      const providerLabel=cfg.provider==='openai'?'OpenAI':'Groq (free at console.groq.com)';
-      throw new Error(`No ${providerLabel} API key saved. Click "⚙ API Keys" to add one.`);
+    let url,key;
+
+    if(cfg.provider==='ollama'){
+      const base=(apiKeys.ollamaUrl||OLLAMA_DEFAULT).replace(/\/+$/,'');
+      url=base+'/v1/chat/completions';
+      key='ollama';            /* Ollama ignores this but the header must exist */
+    }else if(cfg.provider==='openai'){
+      url=OPENAI_URL;
+      key=apiKeys.openai;
+      if(!key)throw new Error('No OpenAI API key saved. Click "⚙ API Keys" to add one.');
+    }else{
+      url=GROQ_URL;
+      key=apiKeys.groq;
+      if(!key)throw new Error('No Groq API key saved. Click "⚙ API Keys" to add one (free at console.groq.com).');
     }
-    const url=cfg.provider==='openai'?OPENAI_URL:GROQ_URL;
+
     history.push({role:'user',content:userText});
     let resp;
     try{
@@ -824,7 +880,10 @@ body::before{
       });
     }catch(netErr){
       history.pop();
-      throw new Error('Network error — check your connection.');
+      const hint=cfg.provider==='ollama'
+        ? ' Is Ollama running? Start it with: ollama serve'
+        : ' Check your internet connection.';
+      throw new Error('Network error —'+hint);
     }
     if(!resp.ok){
       history.pop();
@@ -832,6 +891,8 @@ body::before{
       try{const j=await resp.json();msg=j.error?.message||msg;}catch(e){}
       if(resp.status===401)msg='Invalid API key. Click "⚙ API Keys" to fix it.';
       if(resp.status===429)msg='Rate limit reached. Wait a moment and try again.';
+      if(resp.status===404&&cfg.provider==='ollama')
+        msg=`Model "${cfg.model}" not found locally. Run: ollama pull ${cfg.model}`;
       throw new Error(msg);
     }
     const data=await resp.json();
@@ -859,7 +920,7 @@ body::before{
   }
   function activeM(){
     const a=document.querySelector('.mpill.on');
-    return a?a.textContent.trim():'GPT-4o';
+    return a?(a.dataset.model||a.textContent.trim()):'GPT-4o';
   }
   function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px'}
   function setSendEnabled(on){
